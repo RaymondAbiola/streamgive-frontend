@@ -2,6 +2,7 @@
 
 import { defaultModules } from '@creit.tech/stellar-wallets-kit/modules/utils';
 import { StellarWalletsKit } from '@creit.tech/stellar-wallets-kit/sdk';
+import type { Networks } from '@creit.tech/stellar-wallets-kit/types';
 import {
   createContext,
   useCallback,
@@ -52,7 +53,14 @@ let kitInitialized = false;
  * from useEffect), since the kit touches the DOM/window. */
 function ensureKitInitialized(): void {
   if (kitInitialized) return;
-  StellarWalletsKit.init({ modules: defaultModules() });
+  // Without an explicit network the kit defaults to mainnet, and the
+  // wallet then refuses every request with "the requester expects you to
+  // sign this message on Main Net". The Networks enum's values are the
+  // passphrases themselves, so the env var drives this directly.
+  StellarWalletsKit.init({
+    modules: defaultModules(),
+    network: NETWORK_PASSPHRASE as Networks,
+  });
   kitInitialized = true;
 }
 
@@ -153,7 +161,10 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       // documented — base64 is assumed here for consistency with
       // signTransaction's signedTxXdr. If backend verification ever fails
       // against a real wallet, check this first.
-      const { signedMessage } = await StellarWalletsKit.signMessage(message, { address });
+      const { signedMessage } = await StellarWalletsKit.signMessage(message, {
+        address,
+        networkPassphrase: NETWORK_PASSPHRASE,
+      });
       return signedMessage;
     },
     [address],

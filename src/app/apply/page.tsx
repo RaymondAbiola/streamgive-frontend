@@ -6,11 +6,21 @@ import { Footer } from '@/components/layout/Footer';
 import { Header } from '@/components/layout/Header';
 import { useWallet } from '@/components/wallet/WalletProvider';
 import { ApiError, submitNgoApplication } from '@/lib/api';
+import { NGO_REGISTRY_ERRORS } from '@/lib/contractTypes';
+import { getNgoRegistryClient } from '@/lib/ngoRegistryClient';
 
-type Status = 'idle' | 'submitting' | 'success' | 'error';
+type Status = 'idle' | 'registering' | 'submitting' | 'success' | 'error';
+
+/** True when a failed contract call is ngo-registry reporting that this
+  * address is already in the registry. Re-applying after a part-finished
+  * attempt is normal, so that is a no-op to step over, not an error. */
+function isAlreadyRegistered(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err);
+  return message.includes(`#${NGO_REGISTRY_ERRORS.ALREADY_REGISTERED}`);
+}
 
 export default function ApplyPage() {
-  const { address, connect } = useWallet();
+  const { address, connect, signTransaction } = useWallet();
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -25,14 +35,40 @@ export default function ApplyPage() {
     name.trim().length > 0 &&
     description.trim().length > 0 &&
     contactEmail.trim().length > 0 &&
-    status !== 'submitting';
+    status !== 'submitting' &&
+    status !== 'registering';
 
   async function handleSubmit(event: FormEvent): Promise<void> {
     event.preventDefault();
     if (!canSubmit || !address) return;
 
-    setStatus('submitting');
     setErrorMessage(null);
+
+    // On-chain first. approve_ngo fails with NotRegistered until the
+    // address exists in the registry, so an application without a
+    // matching register() is one the admin can never actually approve.
+    // register() requires the owner's own signature, which is also what
+    // makes the ownerAddress below a proven claim rather than a typed-in
+    // one.
+    setStatus('registering');
+    try {
+      const client = await getNgoRegistryClient(address, signTransaction);
+      const tx = await client.register({ owner: address, name: name.trim() });
+      await tx.signAndSend();
+    } catch (err) {
+      if (!isAlreadyRegistered(err)) {
+        setErrorMessage(
+          err instanceof Error
+            ? `Could not register on-chain: ${err.message}`
+            : 'Could not register on-chain.',
+        );
+        setStatus('error');
+        return;
+      }
+      // Already in the registry from an earlier attempt — carry on.
+    }
+
+    setStatus('submitting');
     try {
       await submitNgoApplication({
         ownerAddress: address,
@@ -73,7 +109,9 @@ export default function ApplyPage() {
         <h1 className="text-2xl font-bold">Apply as an NGO</h1>
         <p className="mt-2 max-w-md text-sm text-gray-600">
           Connect the wallet your organization will use to receive donations, then tell us about
-          your NGO.
+          your NGO. Submitting registers that address in the on-chain registry, so your wallet
+          will ask you to sign one transaction — that signature is what proves the address is
+          yours.
         </p>
 
         {!address ? (
@@ -156,7 +194,11 @@ export default function ApplyPage() {
               disabled={!canSubmit}
               className="w-full rounded-md bg-black px-6 py-3 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
             >
-              {status === 'submitting' ? 'Submitting…' : 'Submit application'}
+              {status === 'registering'
+                ? 'Confirm in your wallet…'
+                : status === 'submitting'
+                  ? 'Submitting…'
+                  : 'Submit application'}
             </button>
           </form>
         )}

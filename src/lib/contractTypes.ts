@@ -34,5 +34,16 @@ export type DonationVaultMethods = {
 };
 
 export type NgoRegistryMethods = {
+  /** Requires the owner's own signature - approve_ngo fails with
+    * NotRegistered until this has been called for that address. */
+  register(args: { owner: string; name: string }): Promise<AssembledTransaction<null>>;
+
   approve_ngo(args: { ngo_owner: string }): Promise<AssembledTransaction<null>>;
 };
+
+/** Contract error codes from ngo-registry's Error enum, for the cases worth
+  * handling differently rather than surfacing as a raw message. */
+export const NGO_REGISTRY_ERRORS = {
+  ALREADY_REGISTERED: 3,
+  NOT_REGISTERED: 4,
+} as const;
