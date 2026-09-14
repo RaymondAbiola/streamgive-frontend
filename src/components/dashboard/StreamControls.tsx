@@ -21,8 +21,7 @@ const DURATIONS = [
 // success toast so it doesn't look like nothing happened.
 const INDEXING_LAG_NOTE = 'may take a few seconds to show below';
 
-type Mode = 'idle' | 'toppingUp' | 'modifying' | 'busy';
-type Mode = 'idle' | 'modifying' | 'confirmingCancel' | 'busy';
+type Mode = 'idle' | 'toppingUp' | 'modifying' | 'confirmingCancel' | 'busy';
 
 export function StreamControls({ stream, onChanged }: { stream: Stream; onChanged: () => void }) {
   const { address, signTransaction } = useWallet();
@@ -119,6 +118,18 @@ export function StreamControls({ stream, onChanged }: { stream: Stream; onChange
           className="rounded-md bg-black px-3 py-1 text-sm font-medium text-white disabled:opacity-50"
         >
           Confirm
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode('idle')}
+          className="rounded-md border border-gray-300 px-3 py-1 text-sm font-medium"
+        >
+          Back
+        </button>
+      </div>
+    );
+  }
+
   if (mode === 'confirmingCancel') {
     return (
       <div className="flex flex-wrap items-center justify-end gap-2">
@@ -135,7 +146,6 @@ export function StreamControls({ stream, onChanged }: { stream: Stream; onChange
           onClick={() => setMode('idle')}
           className="rounded-md border border-gray-300 px-3 py-1 text-sm font-medium"
         >
-          Back
           Never mind
         </button>
       </div>

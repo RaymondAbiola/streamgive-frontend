@@ -38,6 +38,12 @@ export default function PlatformAdminPage() {
   }, [address, signMessage]);
 
   useEffect(() => {
+    // refresh() flips loading/error state synchronously before it awaits,
+    // which set-state-in-effect flags. That is the intended behaviour for
+    // a fetch-on-mount that also re-runs whenever `address` changes: the
+    // spinner has to come back while the new address is loading. Deriving
+    // loading from the data instead would be the way to drop this.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void refresh();
   }, [refresh]);
 
@@ -84,7 +90,7 @@ export default function PlatformAdminPage() {
       <main className="px-6 py-16 sm:px-12">
         <h1 className="text-2xl font-bold">Platform admin</h1>
         <p className="mt-2 max-w-xl text-sm text-gray-600">
-          Review pending NGO applications. Only the wallet configured as the platform's
+          Review pending NGO applications. Only the wallet configured as the platform&apos;s
           <code className="mx-1 rounded bg-gray-100 px-1">ADMIN_ADDRESS</code>
           can act here — approving both calls the on-chain registry and records the review.
         </p>

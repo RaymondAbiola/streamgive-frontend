@@ -33,6 +33,12 @@ export default function DashboardPage() {
   }, [address]);
 
   useEffect(() => {
+    // refresh() flips loading/error state synchronously before it awaits,
+    // which set-state-in-effect flags. That is the intended behaviour for
+    // a fetch-on-mount that also re-runs whenever `address` changes: the
+    // spinner has to come back while the new address is loading. Deriving
+    // loading from the data instead would be the way to drop this.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     refresh();
   }, [refresh]);
 
