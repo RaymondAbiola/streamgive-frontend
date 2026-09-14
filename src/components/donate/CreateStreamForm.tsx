@@ -5,7 +5,7 @@ import { useState, type FormEvent } from 'react';
 import { useWallet } from '@/components/wallet/WalletProvider';
 import { getDonationVaultClient } from '@/lib/donationVaultClient';
 import { parseAmount, TOKEN_DECIMALS } from '@/lib/format';
-import { getNativeAssetAddress } from '@/lib/stellar';
+import { getNativeAssetAddress, getUsdcAssetAddress } from '@/lib/stellar';
 
 const DURATIONS = [
   { label: '1 week', seconds: 7 * 24 * 60 * 60 },
@@ -14,7 +14,7 @@ const DURATIONS = [
   { label: '1 year', seconds: 365 * 24 * 60 * 60 },
 ];
 
-type TokenChoice = 'native' | 'custom';
+type TokenChoice = 'native' | 'usdc' | 'custom';
 type SubmitState = 'idle' | 'signing' | 'success' | 'error';
 
 export function CreateStreamForm({ ngoAddress }: { ngoAddress: string }) {
@@ -34,7 +34,7 @@ export function CreateStreamForm({ ngoAddress }: { ngoAddress: string }) {
   const rateRaw = depositRaw !== null ? depositRaw / BigInt(durationSeconds) : null;
   const isRateValid = rateRaw !== null && rateRaw > 0n;
 
-  const isTokenValid = tokenChoice === 'native' || customToken.trim().length > 0;
+  const isTokenValid = tokenChoice !== 'custom' || customToken.trim().length > 0;
   const canSubmit = isAmountValid && isRateValid && isTokenValid && submitState !== 'signing';
 
   async function handleSubmit(event: FormEvent): Promise<void> {
@@ -48,7 +48,11 @@ export function CreateStreamForm({ ngoAddress }: { ngoAddress: string }) {
 
     try {
       const tokenAddress =
-        tokenChoice === 'native' ? getNativeAssetAddress() : customToken.trim();
+        tokenChoice === 'native'
+          ? getNativeAssetAddress()
+          : tokenChoice === 'usdc'
+            ? getUsdcAssetAddress()
+            : customToken.trim();
 
       const client = await getDonationVaultClient(address, signTransaction);
       const tx = await client.create_stream({
@@ -105,6 +109,15 @@ export function CreateStreamForm({ ngoAddress }: { ngoAddress: string }) {
               onChange={() => setTokenChoice('native')}
             />
             XLM (native)
+          </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="radio"
+              name="token"
+              checked={tokenChoice === 'usdc'}
+              onChange={() => setTokenChoice('usdc')}
+            />
+            USDC
           </label>
           <label className="flex items-center gap-2">
             <input
