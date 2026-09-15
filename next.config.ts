@@ -1,9 +1,14 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  // Bundles only what's needed to run into .next/standalone, instead of
-  // shipping the full node_modules — what the production Dockerfile uses.
-  output: 'standalone',
+  // Self-contained server in .next/standalone, so the production Dockerfile
+  // can ship a runtime image without the whole node_modules tree.
+  //
+  // Skipped on Vercel, which builds and runs the app itself and expects the
+  // default output layout — standalone omits the build-trace manifests it
+  // looks for, and the build dies on a missing next-server.js.nft.json.
+  // VERCEL is set by their build environment.
+  output: process.env.VERCEL ? undefined : 'standalone',
 };
 
 export default nextConfig;
