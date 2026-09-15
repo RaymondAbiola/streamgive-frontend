@@ -1,9 +1,31 @@
 'use client';
 
+import { useSyncExternalStore } from 'react';
+
 import { APP_URL } from '@/lib/config';
 
+// The origin never changes while the page is open, so there is nothing to
+// subscribe to — this just lets React read a different value on the server
+// (where `window` does not exist) than in the browser, without a hydration
+// mismatch or a setState-in-effect.
+const noopSubscribe = () => () => {};
+
+/**
+ * Builds the iframe snippet an NGO pastes into their own site.
+ *
+ * The origin comes from the browser rather than configuration: it is always
+ * right, on production, preview deployments and localhost alike, and there
+ * is no environment variable to forget or set wrongly. `APP_URL` is only the
+ * server-render fallback, replaced the moment the page hydrates.
+ */
 export function EmbedSnippet({ ngoId }: { ngoId: string }) {
-  const snippet = `<iframe src="${APP_URL}/embed/${ngoId}" width="400" height="600" style="border:0"></iframe>`;
+  const origin = useSyncExternalStore(
+    noopSubscribe,
+    () => window.location.origin,
+    () => APP_URL,
+  );
+
+  const snippet = `<iframe src="${origin}/embed/${ngoId}" width="400" height="600" style="border:0"></iframe>`;
 
   return (
     <div className="mt-8 rounded-lg border border-gray-200 p-6">
