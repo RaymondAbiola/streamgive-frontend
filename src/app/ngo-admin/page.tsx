@@ -10,12 +10,12 @@ import { EmbedSnippet } from '@/components/ngoAdmin/EmbedSnippet';
 import { WithdrawButton } from '@/components/ngoAdmin/WithdrawButton';
 import { StreamDetailsModal } from '@/components/streams/StreamDetailsModal';
 import { useWallet } from '@/components/wallet/WalletProvider';
-import { getNgos, getStreams, type Ngo, type Stream } from '@/lib/api';
+import { getStreams, lookupNgoByAddress, type Ngo, type Stream } from '@/lib/api';
 import { formatAmount, truncateAddress } from '@/lib/format';
 
 export default function NgoAdminPage() {
   const { address, connect } = useWallet();
-  // undefined = not looked up yet, null = this address isn't a verified NGO
+  // undefined = not looked up yet, null = this address has no NGO record at all
   const [ngo, setNgo] = useState<Ngo | null | undefined>(undefined);
   const [streams, setStreams] = useState<Stream[]>([]);
   const [loading, setLoading] = useState(false);
@@ -32,13 +32,11 @@ export default function NgoAdminPage() {
     setLoading(true);
     setLoadError(false);
     try {
-      // No "look up NGO by address" endpoint exists — only list-all and
-      // get-by-id — so this scans the verified list client-side. Same
-      // limitation as the platform impact page; fine at today's scale.
-      const ngos = await getNgos();
-      const match = ngos.find((n) => n.ownerAddress === address) ?? null;
+      // /ngos/lookup also returns unverified NGOs, so an applicant waiting
+      // on review can be told that instead of being sent to apply again.
+      const match = await lookupNgoByAddress(address);
       setNgo(match);
-      setStreams(match ? await getStreams({ ngo: match.id }) : []);
+      setStreams(match?.verified ? await getStreams({ ngo: match.id }) : []);
     } catch {
       setLoadError(true);
     } finally {
@@ -89,7 +87,7 @@ export default function NgoAdminPage() {
 
         {address && !loading && !loadError && ngo === null && (
           <p className="mt-8 text-gray-600">
-            This wallet isn&apos;t registered as a verified NGO yet.{' '}
+            This wallet isn&apos;t registered as an NGO yet.{' '}
             <Link href="/apply" className="underline">
               Apply here
             </Link>
@@ -97,7 +95,17 @@ export default function NgoAdminPage() {
           </p>
         )}
 
-        {address && !loading && !loadError && ngo && (
+        {address && !loading && !loadError && ngo && !ngo.verified && (
+          <div className="mt-8 rounded-lg border border-gray-200 p-6">
+            <p className="font-medium">Your application is awaiting review.</p>
+            <p className="mt-1 text-sm text-gray-600">
+              We&apos;ve received the application for {ngo.name}. You&apos;ll be able to manage
+              streams here once it&apos;s verified.
+            </p>
+          </div>
+        )}
+
+        {address && !loading && !loadError && ngo?.verified && (
           <>
             <p className="mt-2 text-gray-600">Managing streams for {ngo.name}.</p>
 
