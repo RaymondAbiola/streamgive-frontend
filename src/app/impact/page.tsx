@@ -4,46 +4,10 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { Footer } from '@/components/layout/Footer';
 import { Header } from '@/components/layout/Header';
-import { getNgo, getNgos } from '@/lib/api';
 import { formatAmount } from '@/lib/format';
+import { loadPlatformImpact, type PlatformImpact } from '@/lib/impact';
 
 const POLL_INTERVAL_MS = 20_000;
-
-type PlatformImpact = {
-  totalCommitted: bigint;
-  totalWithdrawn: bigint;
-  activeStreams: number;
-  ngoCount: number;
-};
-
-/**
- * There's no platform-wide aggregate endpoint on the backend — only
- * per-NGO stats (/ngos/:id, /impact/:ngoId). This fetches every verified
- * NGO's profile and sums client-side instead. Fine at the NGO counts a
- * new platform would actually have; the first thing to replace with a
- * real backend aggregate if that list ever gets large (N+1 fetches).
- *
- * Donor counts are deliberately not summed here: a donor who gives to two
- * NGOs would be counted twice, and per-NGO stats have no way to dedupe
- * that from the frontend.
- */
-async function loadPlatformImpact(): Promise<PlatformImpact> {
-  const ngos = await getNgos();
-  const profiles = await Promise.all(ngos.map((ngo) => getNgo(ngo.id)));
-
-  let totalCommitted = 0n;
-  let totalWithdrawn = 0n;
-  let activeStreams = 0;
-
-  for (const profile of profiles) {
-    if (!profile) continue;
-    totalCommitted += BigInt(profile.stats.totalCommitted);
-    totalWithdrawn += BigInt(profile.stats.totalWithdrawn);
-    activeStreams += profile.stats.activeStreamCount;
-  }
-
-  return { totalCommitted, totalWithdrawn, activeStreams, ngoCount: ngos.length };
-}
 
 export default function ImpactPage() {
   const [impact, setImpact] = useState<PlatformImpact | null>(null);
