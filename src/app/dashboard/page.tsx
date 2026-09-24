@@ -9,7 +9,18 @@ import { Header } from '@/components/layout/Header';
 import { StreamDetailsModal } from '@/components/streams/StreamDetailsModal';
 import { useWallet } from '@/components/wallet/WalletProvider';
 import { getStreams, type Stream } from '@/lib/api';
+import { buildDonationHistoryCsv } from '@/lib/csv';
 import { formatAmount } from '@/lib/format';
+
+function downloadDonationHistoryCsv(streams: Stream[]): void {
+  const blob = new Blob([buildDonationHistoryCsv(streams)], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'streamgive-donations.csv';
+  link.click();
+  URL.revokeObjectURL(url);
+}
 
 export default function DashboardPage() {
   const { address, connect } = useWallet();
@@ -91,16 +102,28 @@ export default function DashboardPage() {
 
         {address && !loading && !loadError && streams.length > 0 && (
           <>
-            <dl className="mt-8 grid grid-cols-2 gap-6 sm:w-fit sm:grid-cols-2">
-              <div>
-                <dt className="text-sm text-gray-500">Total committed</dt>
-                <dd className="text-lg font-semibold">{formatAmount(totalCommitted.toString())}</dd>
-              </div>
-              <div>
-                <dt className="text-sm text-gray-500">Active streams</dt>
-                <dd className="text-lg font-semibold">{activeCount}</dd>
-              </div>
-            </dl>
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <dl className="grid grid-cols-2 gap-6 sm:w-fit sm:grid-cols-2">
+                <div>
+                  <dt className="text-sm text-gray-500">Total committed</dt>
+                  <dd className="text-lg font-semibold">
+                    {formatAmount(totalCommitted.toString())}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-sm text-gray-500">Active streams</dt>
+                  <dd className="text-lg font-semibold">{activeCount}</dd>
+                </div>
+              </dl>
+
+              <button
+                type="button"
+                onClick={() => downloadDonationHistoryCsv(streams)}
+                className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50"
+              >
+                Export CSV
+              </button>
+            </div>
 
             <ul className="mt-8 space-y-4">
               {streams.map((stream) => (
