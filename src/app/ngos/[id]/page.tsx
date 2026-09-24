@@ -4,8 +4,15 @@ import { notFound } from 'next/navigation';
 
 import { Footer } from '@/components/layout/Footer';
 import { Header } from '@/components/layout/Header';
-import { getNgo, type NgoProfile } from '@/lib/api';
+import { getNgo, getStreams, type NgoProfile, type Stream } from '@/lib/api';
+import { formatAmount, truncateAddress } from '@/lib/format';
 import { explorerUrl } from '@/lib/stellar';
+
+const RECENT_STREAMS_LIMIT = 10;
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString();
+}
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -48,6 +55,13 @@ export default async function NgoProfilePage({ params }: Props) {
   if (!ngo) {
     notFound();
   }
+
+  // The API has no "most recent first" ordering guarantee, so that's
+  // enforced here rather than trusting response order.
+  const streams = await getStreams({ ngo: ngo.id }).catch((): Stream[] => []);
+  const recentStreams = [...streams]
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, RECENT_STREAMS_LIMIT);
 
   return (
     <>
@@ -96,6 +110,44 @@ export default async function NgoProfilePage({ params }: Props) {
         >
           Start streaming
         </Link>
+
+        <h2 className="mt-12 text-lg font-semibold">Recent streams</h2>
+        {recentStreams.length === 0 ? (
+          <p className="mt-2 text-gray-600 dark:text-gray-400">No streams yet.</p>
+        ) : (
+          <ul className="mt-4 space-y-3">
+            {recentStreams.map((stream) => (
+              <li
+                key={stream.id}
+                className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-lg border border-gray-200 p-4 text-sm dark:border-gray-800"
+              >
+                <a
+                  href={explorerUrl('account', stream.donor.address)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-mono underline"
+                >
+                  {truncateAddress(stream.donor.address)}
+                </a>
+                <span className="text-gray-500 dark:text-gray-400">
+                  {formatAmount(stream.rate)} / second
+                </span>
+                <span
+                  className={
+                    stream.status === 'ACTIVE'
+                      ? 'font-medium text-green-700 dark:text-green-400'
+                      : 'text-gray-500 dark:text-gray-400'
+                  }
+                >
+                  {stream.status === 'ACTIVE' ? 'Active' : 'Cancelled'}
+                </span>
+                <span className="text-gray-500 dark:text-gray-400">
+                  {formatDate(stream.createdAt)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
       </main>
       <Footer />
     </>
