@@ -4,7 +4,7 @@ import Link from 'next/link';
 
 import type { Stream } from '@/lib/api';
 import { formatAmount } from '@/lib/format';
-import { getNativeAssetAddress } from '@/lib/stellar';
+import { explorerUrl, getNativeAssetAddress } from '@/lib/stellar';
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleString();
@@ -58,12 +58,28 @@ export function StreamDetailsModal({ stream, onClose }: { stream: Stream; onClos
           </div>
           <div className="flex items-center justify-between gap-4">
             <dt className="shrink-0 text-gray-500">Donor</dt>
-            <dd className="break-all text-right font-mono text-xs">{stream.donor.address}</dd>
+            <dd className="break-all text-right font-mono text-xs">
+              <a
+                href={explorerUrl('account', stream.donor.address)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline"
+              >
+                {stream.donor.address}
+              </a>
+            </dd>
           </div>
           <div className="flex items-center justify-between gap-4">
             <dt className="shrink-0 text-gray-500">Token</dt>
             <dd className="break-all text-right font-mono text-xs">
-              {tokenLabel(stream.tokenAddress)}
+              <a
+                href={explorerUrl('contract', stream.tokenAddress)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline"
+              >
+                {tokenLabel(stream.tokenAddress)}
+              </a>
             </dd>
           </div>
           <div className="flex items-center justify-between gap-4">

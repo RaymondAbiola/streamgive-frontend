@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation';
 import { Footer } from '@/components/layout/Footer';
 import { Header } from '@/components/layout/Header';
 import { getNgo, type NgoProfile } from '@/lib/api';
+import { explorerUrl } from '@/lib/stellar';
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -60,6 +61,15 @@ export default async function NgoProfilePage({ params }: Props) {
             </span>
           )}
         </div>
+
+        <a
+          href={explorerUrl('account', ngo.ownerAddress)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-1 inline-block break-all font-mono text-xs text-gray-500 underline"
+        >
+          {ngo.ownerAddress}
+        </a>
 
         <dl className="mt-8 grid grid-cols-2 gap-6 sm:grid-cols-4">
           <div>
