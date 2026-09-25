@@ -66,6 +66,29 @@ export async function getNgo(id: string): Promise<NgoProfile | null> {
   return res.json();
 }
 
+/**
+ * Looks up the NGO owned by a wallet address. Unlike `getNgos`, this also
+ * returns NGOs that have applied but aren't verified yet — check
+ * `verified` on the result.
+ *
+ * Called client-side (it depends on the connected wallet address), so no
+ * Next.js server-fetch caching options.
+ *
+ * @returns The profile, or `null` if the address has no NGO record at all.
+ * @throws {Error} if the response is not ok and not a 404.
+ */
+export async function lookupNgoByAddress(address: string): Promise<NgoProfile | null> {
+  const params = new URLSearchParams({ address });
+  const res = await fetch(`${API_URL}/ngos/lookup?${params.toString()}`);
+  if (res.status === 404) {
+    return null;
+  }
+  if (!res.ok) {
+    throw new Error(`Failed to look up NGO for ${address}: ${res.status}`);
+  }
+  return res.json();
+}
+
 export type Stream = {
   id: string;
   onChainId: string;

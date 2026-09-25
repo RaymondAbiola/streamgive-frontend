@@ -13,13 +13,26 @@ export function formatAmount(raw: string): string {
 
 /** Parses a user-typed decimal amount (e.g. from a text input) into a raw
  * i128 value in the token's base units, or `null` if the input isn't a
- * valid positive amount. */
+ * valid positive amount or has more than TOKEN_DECIMALS decimal places.
+ *
+ * Works on the digits as strings rather than going through Number(), which
+ * silently changes values past ~15 significant digits. */
 export function parseAmount(input: string): bigint | null {
-  const value = Number(input);
-  if (!Number.isFinite(value) || value <= 0) {
+  const match = /^(\d*)(?:\.(\d*))?$/.exec(input.trim());
+  if (!match) {
     return null;
   }
-  return BigInt(Math.round(value * 10 ** TOKEN_DECIMALS));
+
+  const [, whole, fraction = ''] = match;
+  if (whole === '' && fraction === '') {
+    return null;
+  }
+  if (fraction.length > TOKEN_DECIMALS) {
+    return null;
+  }
+
+  const raw = BigInt((whole || '0') + fraction.padEnd(TOKEN_DECIMALS, '0'));
+  return raw > 0n ? raw : null;
 }
 
 /** Shortens a wallet/contract address to its first and last 4 characters. */

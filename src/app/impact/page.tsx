@@ -51,7 +51,10 @@ export default function ImpactPage() {
 
   const refresh = useCallback(() => {
     loadPlatformImpact()
-      .then(setImpact)
+      .then((next) => {
+        setImpact(next);
+        setLoadError(false);
+      })
       .catch(() => setLoadError(true));
   }, []);
 
@@ -72,9 +75,17 @@ export default function ImpactPage() {
           Updates automatically every {POLL_INTERVAL_MS / 1000} seconds.
         </p>
 
-        {loadError && (
+        {loadError && !impact && (
           <p className="mt-8 text-red-600">
             Couldn&apos;t reach the StreamGive API. Is the backend running?
+          </p>
+        )}
+
+        {/* Keep the last good numbers on screen when a later poll fails;
+            the next successful poll clears the notice. */}
+        {loadError && impact && (
+          <p role="status" className="mt-8 text-sm text-amber-600">
+            Couldn&apos;t refresh — showing the last numbers we loaded.
           </p>
         )}
 
@@ -84,7 +95,7 @@ export default function ImpactPage() {
           </p>
         )}
 
-        {!loadError && impact && (
+        {impact && (
           <dl className="mt-8 grid grid-cols-2 gap-6 sm:grid-cols-4">
             <div>
               <dt className="text-sm text-gray-500">Total committed</dt>
