@@ -1,6 +1,7 @@
 import Link from 'next/link';
 
 import { HowItWorks } from '@/components/landing/HowItWorks';
+import { StatsStrip } from '@/components/landing/StatsStrip';
 import { Footer } from '@/components/layout/Footer';
 import { Header } from '@/components/layout/Header';
 
@@ -24,6 +25,7 @@ export default function Home() {
             Explore NGOs
           </Link>
         </section>
+        <StatsStrip />
         <HowItWorks />
       </main>
       <Footer />

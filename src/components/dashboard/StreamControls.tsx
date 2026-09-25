@@ -21,12 +21,17 @@ const DURATIONS = [
 // success toast so it doesn't look like nothing happened.
 const INDEXING_LAG_NOTE = 'may take a few seconds to show below';
 
-type Mode = 'idle' | 'toppingUp' | 'modifying' | 'confirmingCancel' | 'busy';
+type Mode = 'idle' | 'toppingUp' | 'modifying' | 'confirmingCancel';
+
+// Which on-chain action is in flight, so the idle buttons can say what's
+// actually happening instead of reading "Cancelling…" for everything.
+type PendingAction = 'topUp' | 'modifyRate' | 'cancel' | null;
 
 export function StreamControls({ stream, onChanged }: { stream: Stream; onChanged: () => void }) {
   const { address, signTransaction } = useWallet();
   const { showToast } = useToast();
   const [mode, setMode] = useState<Mode>('idle');
+  const [pending, setPending] = useState<PendingAction>(null);
   const [durationSeconds, setDurationSeconds] = useState(DURATIONS[1].seconds);
   const [topUpAmount, setTopUpAmount] = useState('');
 
@@ -35,7 +40,8 @@ export function StreamControls({ stream, onChanged }: { stream: Stream; onChange
   async function handleTopUp(): Promise<void> {
     if (!address || topUpAmountRaw === null) return;
 
-    setMode('busy');
+    setMode('idle');
+    setPending('topUp');
     try {
       const client = await getDonationVaultClient(address, signTransaction);
       const tx = await client.top_up({
@@ -49,13 +55,14 @@ export function StreamControls({ stream, onChanged }: { stream: Stream; onChange
     } catch (err) {
       showToast('error', err instanceof Error ? err.message : 'Something went wrong.');
     } finally {
-      setMode('idle');
+      setPending(null);
     }
   }
 
   async function handleCancel(): Promise<void> {
     if (!address) return;
-    setMode('busy');
+    setMode('idle');
+    setPending('cancel');
     try {
       const client = await getDonationVaultClient(address, signTransaction);
       const tx = await client.cancel_stream({ stream_id: BigInt(stream.onChainId) });
@@ -65,7 +72,7 @@ export function StreamControls({ stream, onChanged }: { stream: Stream; onChange
     } catch (err) {
       showToast('error', err instanceof Error ? err.message : 'Something went wrong.');
     } finally {
-      setMode('idle');
+      setPending(null);
     }
   }
 
@@ -81,7 +88,8 @@ export function StreamControls({ stream, onChanged }: { stream: Stream; onChange
       return;
     }
 
-    setMode('busy');
+    setMode('idle');
+    setPending('modifyRate');
     try {
       const client = await getDonationVaultClient(address, signTransaction);
       const tx = await client.modify_rate({
@@ -94,7 +102,7 @@ export function StreamControls({ stream, onChanged }: { stream: Stream; onChange
     } catch (err) {
       showToast('error', err instanceof Error ? err.message : 'Something went wrong.');
     } finally {
-      setMode('idle');
+      setPending(null);
     }
   }
 
@@ -192,26 +200,26 @@ export function StreamControls({ stream, onChanged }: { stream: Stream; onChange
       <button
         type="button"
         onClick={() => setMode('toppingUp')}
-        disabled={mode === 'busy'}
-        className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:hover:bg-gray-800"
+        disabled={pending !== null}
+        className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
       >
-        Top up
+        {pending === 'topUp' ? 'Topping up…' : 'Top up'}
       </button>
       <button
         type="button"
         onClick={() => setMode('modifying')}
-        disabled={mode === 'busy'}
-        className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:hover:bg-gray-800"
+        disabled={pending !== null}
+        className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
       >
-        Modify rate
+        {pending === 'modifyRate' ? 'Updating…' : 'Modify rate'}
       </button>
       <button
         type="button"
         onClick={() => setMode('confirmingCancel')}
-        disabled={mode === 'busy'}
-        className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:hover:bg-gray-800"
+        disabled={pending !== null}
+        className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
       >
-        {mode === 'busy' ? 'Cancelling…' : 'Cancel'}
+        {pending === 'cancel' ? 'Cancelling…' : 'Cancel'}
       </button>
     </div>
   );
